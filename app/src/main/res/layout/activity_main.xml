@@ -6,21 +6,42 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
-    <TextureView
+    <com.york1996.droidcampro.ui.AutoFitTextureView
         android:id="@+id/texture_view_preview"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_centerHorizontal="true"
-        android:layout_centerVertical="true"/>
+        android:layout_centerVertical="true" />
 
-    <Button
-        android:id="@+id/btn_take_photo"
-        android:layout_width="wrap_content"
+    <RelativeLayout
+        android:id="@+id/area_control"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="拍照"
-        android:layout_marginBottom="30dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
+        app:layout_constraintStart_toStartOf="parent"
+        android:orientation="horizontal">
+        <Button
+            android:id="@+id/btn_switch_cam"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentStart="true"
+            android:text="切换摄像头" />
+
+        <Button
+            android:id="@+id/btn_take_photo"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:text="拍照" />
+
+        <Button
+            android:id="@+id/btn_to_gallery"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentEnd="true"
+            android:text="相册" />
+    </RelativeLayout>
+
 
 </androidx.constraintlayout.widget.ConstraintLayout>

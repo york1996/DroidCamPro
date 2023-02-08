@@ -6,16 +6,19 @@ import androidx.core.app.ActivityCompat;
 
 import android.content.pm.PackageManager;
 import android.os.Bundle;
-import android.view.TextureView;
+import android.view.View;
 import android.widget.Button;
 
 import com.york1996.droidcampro.controller.CameraController;
+import com.york1996.droidcampro.ui.AutoFitTextureView;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
 
     private Button mBtnTakePhoto;
-    private TextureView mTextureViewPreview;
+    private Button mBtnSwitchCam;
+    private Button mBtnToGallery;
+    private AutoFitTextureView mTextureViewPreview;
     private CameraController mCameraController;
 
     @Override
@@ -23,7 +26,21 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.CAMERA}, 1);
+        }
+
         mBtnTakePhoto = findViewById(R.id.btn_take_photo);
+        mBtnSwitchCam = findViewById(R.id.btn_switch_cam);
+        mBtnSwitchCam.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (mCameraController != null) {
+                    mCameraController.switchCamera();
+                }
+            }
+        });
+        mBtnToGallery = findViewById(R.id.btn_to_gallery);
         mTextureViewPreview = findViewById(R.id.texture_view_preview);
         mCameraController = new CameraController(this, mTextureViewPreview);
     }
@@ -31,11 +48,9 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.CAMERA}, 1);
-            return;
+        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+            mCameraController.start();
         }
-        mCameraController.start();
     }
 
     @Override
@@ -51,8 +66,6 @@ public class MainActivity extends AppCompatActivity {
             for (int i = 0; i < permissions.length; i++) {
                 if (grantResults[i] == PackageManager.PERMISSION_GRANTED) {
                     mCameraController.start();
-                } else {
-                    finish();
                 }
             }
         }
