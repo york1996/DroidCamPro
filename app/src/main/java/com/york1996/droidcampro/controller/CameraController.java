@@ -9,6 +9,7 @@ import android.hardware.camera2.CameraCaptureSession;
 import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
+import android.hardware.camera2.CameraMetadata;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.ImageReader;
@@ -109,6 +110,22 @@ public class CameraController {
         openCameraAndPreview(mTextureWidth, mTextureHeight, !mFrontCam);
     }
 
+    public boolean supportAEModeControl() {
+        try {
+            CameraCharacteristics characteristics = mCameraManager.getCameraCharacteristics(mCameraId);
+            int[] aeAvailableModes = characteristics.get(CameraCharacteristics.CONTROL_AE_AVAILABLE_MODES);
+            for (int mode : aeAvailableModes) {
+                Log.d(TAG, "support ae mode = " + mode);
+                if (mode == CameraMetadata.CONTROL_AE_MODE_OFF) {
+                    return true;
+                }
+            }
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
     private void openCameraAndPreview(int width, int height, boolean front) {
         try {
             for (String cameraId : mCameraManager.getCameraIdList()) {
@@ -123,7 +140,11 @@ public class CameraController {
                     continue;
                 }
                 mPreviewSize = getOptimalSize(map.getOutputSizes(SurfaceTexture.class), width, height);
-                mTextureViewPreview.setAspectRatio(mPreviewSize.getWidth(), mPreviewSize.getHeight());
+                if (mPreviewSize.getHeight() < mPreviewSize.getWidth()) {
+                    mTextureViewPreview.setAspectRatio(mPreviewSize.getHeight(), mPreviewSize.getWidth());
+                } else {
+                    mTextureViewPreview.setAspectRatio(mPreviewSize.getWidth(), mPreviewSize.getHeight());
+                }
                 mCaptureSize = Collections.max(Arrays.asList(map.getOutputSizes(ImageFormat.JPEG)),
                         (lhs, rhs) -> Long.signum((long) lhs.getWidth() * lhs.getHeight() - (long) rhs.getHeight() * rhs.getWidth()));
                 mImageReader = ImageReader.newInstance(mCaptureSize.getWidth(), mCaptureSize.getHeight(),
@@ -179,13 +200,6 @@ public class CameraController {
         return sizeMap[0];
     }
 
-    private final ImageReader.OnImageAvailableListener mOnImageAvailableListener = new ImageReader.OnImageAvailableListener() {
-        @Override
-        public void onImageAvailable(ImageReader reader) {
-
-        }
-    };
-
     private void startPreview() {
         SurfaceTexture mSurfaceTexture = mTextureViewPreview.getSurfaceTexture();
         mSurfaceTexture.setDefaultBufferSize(mPreviewSize.getWidth(), mPreviewSize.getHeight());
@@ -196,6 +210,7 @@ public class CameraController {
             mCameraDevice.createCaptureSession(Arrays.asList(previewSurface, mImageReader.getSurface()), new CameraCaptureSession.StateCallback() {
                 @Override
                 public void onConfigured(CameraCaptureSession session) {
+                    Log.d(TAG, "CaptureSession: onConfigured");
                     try {
                         mCaptureRequest = mCaptureRequestBuilder.build();
                         mCameraCaptureSession = session;
@@ -214,6 +229,13 @@ public class CameraController {
             e.printStackTrace();
         }
     }
+
+    private final ImageReader.OnImageAvailableListener mOnImageAvailableListener = new ImageReader.OnImageAvailableListener() {
+        @Override
+        public void onImageAvailable(ImageReader reader) {
+
+        }
+    };
 
     private final CameraDevice.StateCallback mStateCallback = new CameraDevice.StateCallback() {
         @Override
