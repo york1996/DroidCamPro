@@ -5,21 +5,28 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
 import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.os.Bundle;
-import android.view.View;
+import android.util.Log;
 import android.widget.Button;
+import android.widget.Toast;
 
-import com.york1996.droidcampro.controller.CameraControllerImpl;
+import com.york1996.droidcampro.callback.CameraControlCallback;
+import com.york1996.droidcampro.controller.CameraController;
+import com.york1996.droidcampro.controller.GalleryController;
+import com.york1996.droidcampro.model.CameraParams;
 import com.york1996.droidcampro.ui.AutoFitTextureView;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements CameraControlCallback {
     private static final String TAG = "MainActivity";
 
     private Button mBtnTakePhoto;
     private Button mBtnSwitchCam;
     private Button mBtnToGallery;
     private AutoFitTextureView mTextureViewPreview;
-    private CameraControllerImpl mCameraController;
+    private CameraController mCameraController;
+    private GalleryController mGalleryController;
+    private Uri mLastCapturePhoto;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -31,18 +38,35 @@ public class MainActivity extends AppCompatActivity {
         }
 
         mBtnTakePhoto = findViewById(R.id.btn_take_photo);
+        mBtnTakePhoto.setOnClickListener(v -> {
+            if (mCameraController != null) {
+                mCameraController.takePhoto();
+            }
+        });
         mBtnSwitchCam = findViewById(R.id.btn_switch_cam);
-        mBtnSwitchCam.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (mCameraController != null) {
-                    mCameraController.switchCamera();
-                }
+        mBtnSwitchCam.setOnClickListener(v -> {
+            if (mCameraController != null) {
+                mCameraController.switchCamera();
             }
         });
         mBtnToGallery = findViewById(R.id.btn_to_gallery);
+        mBtnToGallery.setOnClickListener(v -> {
+            if (mGalleryController == null) {
+                return;
+            }
+            if (mLastCapturePhoto != null) {
+                mGalleryController.jumpToViewPicture(mLastCapturePhoto);
+            } else {
+                mGalleryController.jumpToSystemGallery();
+            }
+        });
         mTextureViewPreview = findViewById(R.id.texture_view_preview);
-        mCameraController = new CameraControllerImpl(this, mTextureViewPreview);
+        mCameraController = new CameraController.Builder()
+                .setContext(this)
+                .setAutoFitTextureView(mTextureViewPreview)
+                .setCameraControlCallback(this)
+                .build();
+        mGalleryController = new GalleryController(this);
     }
 
     @Override
@@ -69,5 +93,35 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         }
+    }
+
+    @Override
+    public void onCameraStarted(boolean front) {
+        Log.d(TAG, "onCameraStarted = " + front);
+    }
+
+    @Override
+    public void onCameraStopped() {
+        Log.d(TAG, "onCameraStopped");
+    }
+
+    @Override
+    public void onCameraParamsChanged(CameraParams params) {
+        Log.d(TAG, "onCameraParamsChanged");
+    }
+
+    @Override
+    public void onCameraCapture(byte[] photoBytes) {
+        Log.d(TAG, "onCameraCapture");
+        if (mGalleryController == null) {
+            return;
+        }
+        mLastCapturePhoto = mGalleryController.savePictureToGallery(photoBytes);
+        Toast.makeText(this, "相片已保存", Toast.LENGTH_SHORT).show();
+    }
+
+    @Override
+    public void onError(int errorCode) {
+        Log.e(TAG, "onError");
     }
 }
