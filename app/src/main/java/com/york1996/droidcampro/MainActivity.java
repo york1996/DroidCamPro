@@ -9,7 +9,7 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 
-import com.york1996.droidcampro.controller.CameraController;
+import com.york1996.droidcampro.controller.CameraControllerImpl;
 import com.york1996.droidcampro.ui.AutoFitTextureView;
 
 public class MainActivity extends AppCompatActivity {
@@ -19,7 +19,7 @@ public class MainActivity extends AppCompatActivity {
     private Button mBtnSwitchCam;
     private Button mBtnToGallery;
     private AutoFitTextureView mTextureViewPreview;
-    private CameraController mCameraController;
+    private CameraControllerImpl mCameraController;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -42,7 +42,7 @@ public class MainActivity extends AppCompatActivity {
         });
         mBtnToGallery = findViewById(R.id.btn_to_gallery);
         mTextureViewPreview = findViewById(R.id.texture_view_preview);
-        mCameraController = new CameraController(this, mTextureViewPreview);
+        mCameraController = new CameraControllerImpl(this, mTextureViewPreview);
     }
 
     @Override

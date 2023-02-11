@@ -1,288 +1,156 @@
 package com.york1996.droidcampro.controller;
 
-import android.content.Context;
-import android.content.pm.PackageManager;
-import android.graphics.ImageFormat;
-import android.graphics.SurfaceTexture;
-import android.hardware.camera2.CameraAccessException;
-import android.hardware.camera2.CameraCaptureSession;
-import android.hardware.camera2.CameraCharacteristics;
-import android.hardware.camera2.CameraDevice;
-import android.hardware.camera2.CameraManager;
-import android.hardware.camera2.CameraMetadata;
-import android.hardware.camera2.CaptureRequest;
-import android.hardware.camera2.params.StreamConfigurationMap;
-import android.media.ImageReader;
-import android.os.Handler;
-import android.os.HandlerThread;
-import android.util.Log;
-import android.util.Size;
-import android.view.Surface;
-import android.view.TextureView;
+import android.hardware.camera2.params.MeteringRectangle;
+import android.util.Range;
 
-import androidx.annotation.NonNull;
-import androidx.core.app.ActivityCompat;
+public abstract class CameraController {
 
-import com.york1996.droidcampro.ui.AutoFitTextureView;
+    /***
+     * 开始摄影
+     */
+    public abstract void start();
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+    /**
+     * 结束摄影
+     */
+    public abstract void stop();
 
-public class CameraController {
-    private static final String TAG = "CameraController";
+    /**
+     * 切换摄像头
+     */
+    public abstract void switchCamera();
 
-    private final Context mContext;
-    private final CameraManager mCameraManager;
-    private final AutoFitTextureView mTextureViewPreview;
+    /**
+     * 是否支持切换
+     *
+     * @return 结果
+     */
+    public abstract boolean supportSwitchCamera();
 
-    private HandlerThread mCameraThread;
-    private Handler mCameraHandler;
-    private int mTextureWidth;
-    private int mTextureHeight;
+    /**
+     * 开启自动测光
+     *
+     * @param autoExposure 是否开启
+     */
+    public abstract void setAutoExposure(boolean autoExposure);
 
-    // 当前使用的摄像头ID
-    private String mCameraId;
-    // 当前方向
-    private boolean mFrontCam;
-    // 预览大小
-    private Size mPreviewSize;
-    // 照片大小
-    private Size mCaptureSize;
-    // 获取预览数据
-    private ImageReader mImageReader;
-    // 相机控制
-    private CameraDevice mCameraDevice;
-    // 拍照参数
-    private CaptureRequest.Builder mCaptureRequestBuilder;
-    private CaptureRequest mCaptureRequest;
-    private CameraCaptureSession mCameraCaptureSession;
+    /**
+     * 获取曝光补偿范围
+     *
+     * @return 范围
+     */
+    public abstract Range<Integer> getExposureCompensationRange();
 
-    public CameraController(Context context, AutoFitTextureView previewTextureView) {
-        mContext = context;
-        mTextureViewPreview = previewTextureView;
-        mCameraManager = (CameraManager) mContext.getSystemService(Context.CAMERA_SERVICE);
-    }
+    /**
+     * 设置曝光补偿
+     *
+     * @param value 补偿值
+     */
+    public abstract void setExposureCompensationStep(int value);
 
-    public void start() {
-        Log.d(TAG, "start");
-        // 相机线程及其handler
-        mCameraThread = new HandlerThread("CameraThread");
-        mCameraThread.start();
-        mCameraHandler = new Handler(mCameraThread.getLooper());
+    /**
+     * 设置曝光锁定
+     *
+     * @param lock 是否锁定
+     */
+    public abstract void setExposureLock(boolean lock);
 
-        // 注册
-        if (mTextureViewPreview.isAvailable()) {
-            Log.i(TAG, "preview already available");
-            openCameraAndPreview(mTextureWidth, mTextureHeight, false);
-            return;
-        }
-        mTextureViewPreview.setSurfaceTextureListener(mTextureListener);
-    }
+    /**
+     * 设置曝光区域
+     *
+     * @param rectangles 区域
+     */
+    public abstract void setExposureArea(MeteringRectangle[] rectangles);
 
-    public void stop() {
-        stopCameraAndPreview();
-        if (mCameraThread != null) {
-            mCameraThread.quitSafely();
-            mCameraThread = null;
-        }
-    }
+    /**
+     * 获取快门时间范围
+     *
+     * @return 范围
+     */
+    public abstract Range<Integer> getExposureTimeRange();
 
-    public boolean supportFrontCamera() {
-        try {
-            for (String cameraId : mCameraManager.getCameraIdList()) {
-                CameraCharacteristics characteristics = mCameraManager.getCameraCharacteristics(cameraId);
-                Integer facing = characteristics.get(CameraCharacteristics.LENS_FACING);
-                if (facing != null && facing == CameraCharacteristics.LENS_FACING_FRONT) {
-                    return true;
-                }
-            }
-        } catch (CameraAccessException e) {
-            e.printStackTrace();
-            return false;
-        }
-        return false;
-    }
+    /**
+     * 设置快门时间
+     *
+     * @param value 时间
+     */
+    public abstract void setExposureTime(int value);
 
-    public void switchCamera() {
-        stopCameraAndPreview();
-        openCameraAndPreview(mTextureWidth, mTextureHeight, !mFrontCam);
-    }
+    /**
+     * 获取白平衡值范围
+     *
+     * @return 范围
+     */
+    public abstract Range<Integer> getWhiteBalanceRegionRange();
 
-    public boolean supportAEModeControl() {
-        try {
-            CameraCharacteristics characteristics = mCameraManager.getCameraCharacteristics(mCameraId);
-            int[] aeAvailableModes = characteristics.get(CameraCharacteristics.CONTROL_AE_AVAILABLE_MODES);
-            for (int mode : aeAvailableModes) {
-                Log.d(TAG, "support ae mode = " + mode);
-                if (mode == CameraMetadata.CONTROL_AE_MODE_OFF) {
-                    return true;
-                }
-            }
-        } catch (CameraAccessException e) {
-            e.printStackTrace();
-        }
-        return false;
-    }
+    /**
+     * 设置白平衡值
+     *
+     * @param value 白平衡值
+     */
+    public abstract void setWhiteBalanceRegion(int value);
 
-    private void openCameraAndPreview(int width, int height, boolean front) {
-        try {
-            for (String cameraId : mCameraManager.getCameraIdList()) {
-                CameraCharacteristics characteristics = mCameraManager.getCameraCharacteristics(cameraId);
-                Integer facing = characteristics.get(CameraCharacteristics.LENS_FACING);
-                if (facing != null && facing == CameraCharacteristics.LENS_FACING_BACK && front) {
-                    continue;
-                }
-                StreamConfigurationMap map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
-                if (map == null) {
-                    Log.e(TAG, "can't find SCALER_STREAM_CONFIGURATION_MAP, cameraId = " + cameraId);
-                    continue;
-                }
-                mPreviewSize = getOptimalSize(map.getOutputSizes(SurfaceTexture.class), width, height);
-                if (mPreviewSize.getHeight() < mPreviewSize.getWidth()) {
-                    mTextureViewPreview.setAspectRatio(mPreviewSize.getHeight(), mPreviewSize.getWidth());
-                } else {
-                    mTextureViewPreview.setAspectRatio(mPreviewSize.getWidth(), mPreviewSize.getHeight());
-                }
-                mCaptureSize = Collections.max(Arrays.asList(map.getOutputSizes(ImageFormat.JPEG)),
-                        (lhs, rhs) -> Long.signum((long) lhs.getWidth() * lhs.getHeight() - (long) rhs.getHeight() * rhs.getWidth()));
-                mImageReader = ImageReader.newInstance(mCaptureSize.getWidth(), mCaptureSize.getHeight(),
-                        ImageFormat.JPEG, 2);
-                mImageReader.setOnImageAvailableListener(mOnImageAvailableListener, mCameraHandler);
-                mCameraId = cameraId;
-                mFrontCam = front;
-                break;
-            }
-            if (ActivityCompat.checkSelfPermission(mContext, android.Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-                Log.e(TAG, "can't open camera, no permission");
-                return;
-            }
-            mCameraManager.openCamera(mCameraId, mStateCallback, mCameraHandler);
-        } catch (CameraAccessException e) {
-            e.printStackTrace();
-        }
-    }
+    /**
+     * 自动白平衡
+     *
+     * @param auto 是否自动
+     */
+    public abstract void setAutoWhitBalance(boolean auto);
 
-    private void stopCameraAndPreview() {
-        mCameraId = null;
-        if (mCameraCaptureSession != null) {
-            mCameraCaptureSession.close();
-            mCameraCaptureSession = null;
-        }
-        if (mCameraDevice != null) {
-            mCameraDevice.close();
-            mCameraDevice = null;
-        }
-        if (mImageReader != null) {
-            mImageReader.close();
-            mImageReader = null;
-        }
-    }
+    /**
+     * ISO值范围
+     *
+     * @return 范围
+     */
+    public abstract Range<Integer> getISORange();
 
-    private Size getOptimalSize(Size[] sizeMap, int width, int height) {
-        List<Size> sizeList = new ArrayList<>();
-        for (Size option : sizeMap) {
-            if (width > height) {
-                if (option.getWidth() > width && option.getHeight() > height) {
-                    sizeList.add(option);
-                }
-            } else {
-                if (option.getWidth() > height && option.getHeight() > width) {
-                    sizeList.add(option);
-                }
-            }
-        }
-        if (sizeList.size() > 0) {
-            return Collections.min(sizeList,
-                    (lhs, rhs) -> Long.signum((long) lhs.getWidth() * lhs.getHeight() - (long) rhs.getWidth() * rhs.getHeight()));
-        }
-        return sizeMap[0];
-    }
+    /**
+     * 设置ISO
+     *
+     * @param value ISO值
+     */
+    public abstract void setISO(int value);
 
-    private void startPreview() {
-        SurfaceTexture mSurfaceTexture = mTextureViewPreview.getSurfaceTexture();
-        mSurfaceTexture.setDefaultBufferSize(mPreviewSize.getWidth(), mPreviewSize.getHeight());
-        Surface previewSurface = new Surface(mSurfaceTexture);
-        try {
-            mCaptureRequestBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
-            mCaptureRequestBuilder.addTarget(previewSurface);
-            mCameraDevice.createCaptureSession(Arrays.asList(previewSurface, mImageReader.getSurface()), new CameraCaptureSession.StateCallback() {
-                @Override
-                public void onConfigured(CameraCaptureSession session) {
-                    Log.d(TAG, "CaptureSession: onConfigured");
-                    try {
-                        mCaptureRequest = mCaptureRequestBuilder.build();
-                        mCameraCaptureSession = session;
-                        mCameraCaptureSession.setRepeatingRequest(mCaptureRequest, null, mCameraHandler);
-                    } catch (CameraAccessException e) {
-                        e.printStackTrace();
-                    }
-                }
 
-                @Override
-                public void onConfigureFailed(CameraCaptureSession session) {
+    /**
+     * 获取自动对焦模式
+     *
+     * @return 模式值
+     */
+    public abstract int[] getFocusModes();
 
-                }
-            }, mCameraHandler);
-        } catch (CameraAccessException e) {
-            e.printStackTrace();
-        }
-    }
+    /**
+     * 设置对焦模式
+     *
+     * @param mode 模式值
+     */
+    public abstract void setFocusMode(int mode);
 
-    private final ImageReader.OnImageAvailableListener mOnImageAvailableListener = new ImageReader.OnImageAvailableListener() {
-        @Override
-        public void onImageAvailable(ImageReader reader) {
+    /**
+     * 设置对焦区域
+     *
+     * @param rectangle 区域
+     */
+    public abstract void setFocusArea(MeteringRectangle rectangle);
 
-        }
-    };
+    /**
+     * 设置对焦锁定
+     *
+     * @param lock 是否锁定
+     */
+    public abstract void setFocusLock(boolean lock);
 
-    private final CameraDevice.StateCallback mStateCallback = new CameraDevice.StateCallback() {
-        @Override
-        public void onOpened(CameraDevice camera) {
-            Log.d(TAG, "mStateCallback: onOpened");
-            mCameraDevice = camera;
-            startPreview();
-        }
+    /**
+     * 获取对焦距离范围
+     *
+     * @return 距离范围
+     */
+    public abstract Range<Integer> getFocusDistanceRange();
 
-        @Override
-        public void onDisconnected(CameraDevice camera) {
-            Log.d(TAG, "mStateCallback: onDisconnected");
-            camera.close();
-            mCameraDevice = null;
-        }
-
-        @Override
-        public void onError(CameraDevice camera, int error) {
-            Log.e(TAG, "mStateCallback: onError");
-            camera.close();
-            mCameraDevice = null;
-        }
-    };
-
-    private final TextureView.SurfaceTextureListener mTextureListener = new TextureView.SurfaceTextureListener() {
-        @Override
-        public void onSurfaceTextureAvailable(@NonNull SurfaceTexture surface, int width, int height) {
-            Log.d(TAG, "onSurfaceTextureAvailable");
-            mTextureWidth = width;
-            mTextureHeight = height;
-            openCameraAndPreview(width, height, false);
-        }
-
-        @Override
-        public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
-            Log.d(TAG, "onSurfaceTextureSizeChanged");
-        }
-
-        @Override
-        public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
-            Log.d(TAG, "onSurfaceTextureDestroyed");
-            return false;
-        }
-
-        @Override
-        public void onSurfaceTextureUpdated(SurfaceTexture surface) {
-//            Log.d(TAG, "onSurfaceTextureUpdated");
-        }
-    };
+    /**
+     * 设置对焦距离
+     *
+     * @param distance 距离
+     */
+    public abstract void setFocusDistance(int distance);
 }
