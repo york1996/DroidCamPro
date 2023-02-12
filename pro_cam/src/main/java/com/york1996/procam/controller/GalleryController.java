@@ -1,4 +1,4 @@
-package com.york1996.droidcampro.controller;
+package com.york1996.procam.controller;
 
 import android.content.Context;
 import android.content.Intent;

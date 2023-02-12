@@ -1,4 +1,4 @@
-package com.york1996.droidcampro.controller;
+package com.york1996.procam.controller;
 
 import android.content.Context;
 import android.content.pm.PackageManager;
@@ -11,6 +11,7 @@ import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CameraMetadata;
 import android.hardware.camera2.CaptureRequest;
+import android.hardware.camera2.CaptureResult;
 import android.hardware.camera2.TotalCaptureResult;
 import android.hardware.camera2.params.MeteringRectangle;
 import android.hardware.camera2.params.StreamConfigurationMap;
@@ -29,9 +30,10 @@ import android.view.TextureView;
 import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
 
-import com.york1996.droidcampro.callback.CameraControlCallback;
-import com.york1996.droidcampro.controller.CameraController;
-import com.york1996.droidcampro.ui.AutoFitTextureView;
+
+import com.york1996.procam.CameraController;
+import com.york1996.procam.callback.CameraControlCallback;
+import com.york1996.procam.ui.AutoFitTextureView;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -66,8 +68,6 @@ public class CameraControllerImpl extends CameraController {
     private String mCameraId;
     // 当前方向
     private boolean mFrontCam;
-    // 预览大小
-    private Size mPreviewSize;
     // 照片大小
     private Size mCaptureSize;
     // 获取预览数据
@@ -79,7 +79,7 @@ public class CameraControllerImpl extends CameraController {
     private CaptureRequest mCaptureRequest;
     private CameraCaptureSession mCameraCaptureSession;
 
-    CameraControllerImpl(Context context, AutoFitTextureView previewTextureView, CameraControlCallback callback) {
+    public CameraControllerImpl(Context context, AutoFitTextureView previewTextureView, CameraControlCallback callback) {
         mContext = context;
         mMainHandler = new Handler(Looper.getMainLooper());
         mTextureViewPreview = previewTextureView;
@@ -117,8 +117,9 @@ public class CameraControllerImpl extends CameraController {
     public void takePhoto() {
         try {
             mCaptureRequestBuilder.addTarget(mImageReader.getSurface());
-            int rotation = mContext.getResources().getConfiguration().orientation;
-            mCaptureRequestBuilder.set(CaptureRequest.JPEG_ORIENTATION, ORIENTATION.get(rotation));
+//            int rotation = mDisplay.getRotation();
+//            mCaptureRequestBuilder.set(CaptureRequest.JPEG_ORIENTATION, getOrientation(rotation));
+//            Log.d(TAG, "JPEG_ORIENTATION = " + getOrientation(rotation) + " rotation = " + rotation);
             mCameraCaptureSession.capture(mCaptureRequestBuilder.build(), new CameraCaptureSession.CaptureCallback() {
                 @Override
                 public void onCaptureCompleted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, @NonNull TotalCaptureResult result) {
@@ -149,6 +150,29 @@ public class CameraControllerImpl extends CameraController {
     }
 
     @Override
+    public int[] getFlashMode() {
+        return new int[]{
+                CaptureRequest.FLASH_MODE_OFF,
+                CaptureRequest.FLASH_MODE_SINGLE,
+                CaptureRequest.FLASH_MODE_TORCH
+        };
+    }
+
+    @Override
+    public void setFlashMode(int mode) {
+        if (mCaptureRequestBuilder == null || mCameraCaptureSession == null) {
+            return;
+        }
+        try {
+            mCaptureRequestBuilder.set(CaptureRequest.FLASH_MODE, mode);
+            mCaptureRequest = mCaptureRequestBuilder.build();
+            mCameraCaptureSession.setRepeatingRequest(mCaptureRequest, mCameraCaptureCallback, mCameraHandler);
+        } catch (CameraAccessException e) {
+            Log.e(TAG, "setFlashMode: ", e);
+        }
+    }
+
+    @Override
     public void setAutoExposure(boolean autoExposure) {
         if (mCaptureRequestBuilder == null || mCameraCaptureSession == null) {
             return;
@@ -156,7 +180,7 @@ public class CameraControllerImpl extends CameraController {
         try {
             mCaptureRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CameraMetadata.CONTROL_AE_MODE_ON);
             mCaptureRequest = mCaptureRequestBuilder.build();
-            mCameraCaptureSession.setRepeatingRequest(mCaptureRequest, null, mCameraHandler);
+            mCameraCaptureSession.setRepeatingRequest(mCaptureRequest, mCameraCaptureCallback, mCameraHandler);
         } catch (CameraAccessException e) {
             Log.e(TAG, "setAutoExposure: ", e);
         }
@@ -184,7 +208,7 @@ public class CameraControllerImpl extends CameraController {
             mCaptureRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CameraMetadata.CONTROL_AE_MODE_ON);
             mCaptureRequestBuilder.set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, value);
             mCaptureRequest = mCaptureRequestBuilder.build();
-            mCameraCaptureSession.setRepeatingRequest(mCaptureRequest, null, mCameraHandler);
+            mCameraCaptureSession.setRepeatingRequest(mCaptureRequest, mCameraCaptureCallback, mCameraHandler);
         } catch (CameraAccessException e) {
             Log.e(TAG, "setAutoExposureCompensationStep: ", e);
         }
@@ -199,7 +223,7 @@ public class CameraControllerImpl extends CameraController {
             mCaptureRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CameraMetadata.CONTROL_AE_MODE_ON);
             mCaptureRequestBuilder.set(CaptureRequest.CONTROL_AE_LOCK, lock);
             mCaptureRequest = mCaptureRequestBuilder.build();
-            mCameraCaptureSession.setRepeatingRequest(mCaptureRequest, null, mCameraHandler);
+            mCameraCaptureSession.setRepeatingRequest(mCaptureRequest, mCameraCaptureCallback, mCameraHandler);
         } catch (CameraAccessException e) {
             Log.e(TAG, "setAutoExposureLock: ", e);
         }
@@ -214,7 +238,7 @@ public class CameraControllerImpl extends CameraController {
             mCaptureRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CameraMetadata.CONTROL_AE_MODE_ON);
             mCaptureRequestBuilder.set(CaptureRequest.CONTROL_AE_REGIONS, rectangles);
             mCaptureRequest = mCaptureRequestBuilder.build();
-            mCameraCaptureSession.setRepeatingRequest(mCaptureRequest, null, mCameraHandler);
+            mCameraCaptureSession.setRepeatingRequest(mCaptureRequest, mCameraCaptureCallback, mCameraHandler);
         } catch (CameraAccessException e) {
             Log.e(TAG, "setAutoExposureArea: ", e);
         }
@@ -255,9 +279,34 @@ public class CameraControllerImpl extends CameraController {
             mCaptureRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CameraMetadata.CONTROL_AE_MODE_OFF);
             mCaptureRequestBuilder.set(CaptureRequest.SENSOR_EXPOSURE_TIME, value);
             mCaptureRequest = mCaptureRequestBuilder.build();
-            mCameraCaptureSession.setRepeatingRequest(mCaptureRequest, null, mCameraHandler);
+            mCameraCaptureSession.setRepeatingRequest(mCaptureRequest, mCameraCaptureCallback, mCameraHandler);
         } catch (CameraAccessException e) {
             Log.e(TAG, "setExposureTime: ", e);
+        }
+    }
+
+    @Override
+    public float[] getAvailableLensAperture() {
+        try {
+            CameraCharacteristics cameraCharacteristics = mCameraManager.getCameraCharacteristics(mCameraId);
+            return cameraCharacteristics.get(CameraCharacteristics.LENS_INFO_AVAILABLE_APERTURES);
+        } catch (CameraAccessException e) {
+            Log.e(TAG, "getAvailableLensAperture: ", e);
+        }
+        return null;
+    }
+
+    @Override
+    public void setLensAperture(float value) {
+        if (mCaptureRequestBuilder == null || mCameraCaptureSession == null) {
+            return;
+        }
+        try {
+            mCaptureRequestBuilder.set(CaptureRequest.LENS_APERTURE, value);
+            mCaptureRequest = mCaptureRequestBuilder.build();
+            mCameraCaptureSession.setRepeatingRequest(mCaptureRequest, mCameraCaptureCallback, mCameraHandler);
+        } catch (CameraAccessException e) {
+            Log.e(TAG, "setLensAperture: ", e);
         }
     }
 
@@ -296,45 +345,73 @@ public class CameraControllerImpl extends CameraController {
             mCaptureRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CameraMetadata.CONTROL_AE_MODE_OFF);
             mCaptureRequestBuilder.set(CaptureRequest.SENSOR_SENSITIVITY, value);
             mCaptureRequest = mCaptureRequestBuilder.build();
-            mCameraCaptureSession.setRepeatingRequest(mCaptureRequest, null, mCameraHandler);
+            mCameraCaptureSession.setRepeatingRequest(mCaptureRequest, mCameraCaptureCallback, mCameraHandler);
         } catch (CameraAccessException e) {
             Log.e(TAG, "setISO: ", e);
         }
     }
 
     @Override
-    public Range<Integer> getWhiteBalanceRegionRange() {
+    public int[] getAvailableWhiteBalanceMode() {
+        try {
+            CameraCharacteristics cameraCharacteristics = mCameraManager.getCameraCharacteristics(mCameraId);
+            return cameraCharacteristics.get(CameraCharacteristics.CONTROL_AWB_AVAILABLE_MODES);
+        } catch (CameraAccessException e) {
+            Log.e(TAG, "getWhiteBalanceRegionRange: ", e);
+        }
         return null;
     }
 
     @Override
-    public void setWhiteBalanceRegion(int value) {
+    public void setWhiteBalanceMode(int mode) {
         if (mCaptureRequestBuilder == null || mCameraCaptureSession == null) {
             return;
         }
-    }
-
-    @Override
-    public void setAutoWhitBalance(boolean auto) {
-        if (mCaptureRequestBuilder == null || mCameraCaptureSession == null) {
-            return;
+        try {
+            mCaptureRequestBuilder.set(CaptureRequest.CONTROL_AWB_MODE, mode);
+            mCaptureRequest = mCaptureRequestBuilder.build();
+            mCameraCaptureSession.setRepeatingRequest(mCaptureRequest, mCameraCaptureCallback, mCameraHandler);
+        } catch (CameraAccessException e) {
+            Log.e(TAG, "setWhiteBalanceMode: ", e);
         }
     }
 
     @Override
     public void setAutoWhiteBalanceLock(boolean lock) {
-
+        if (mCaptureRequestBuilder == null || mCameraCaptureSession == null) {
+            return;
+        }
+        try {
+            mCaptureRequestBuilder.set(CaptureRequest.CONTROL_AWB_LOCK, lock);
+            mCaptureRequest = mCaptureRequestBuilder.build();
+            mCameraCaptureSession.setRepeatingRequest(mCaptureRequest, mCameraCaptureCallback, mCameraHandler);
+        } catch (CameraAccessException e) {
+            Log.e(TAG, "setAutoWhiteBalanceLock: ", e);
+        }
     }
 
     @Override
     public int[] getFocusModes() {
-        return new int[0];
+        try {
+            CameraCharacteristics cameraCharacteristics = mCameraManager.getCameraCharacteristics(mCameraId);
+            return cameraCharacteristics.get(CameraCharacteristics.CONTROL_AF_AVAILABLE_MODES);
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
     @Override
     public void setFocusMode(int mode) {
         if (mCaptureRequestBuilder == null || mCameraCaptureSession == null) {
             return;
+        }
+        try {
+            mCaptureRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, mode);
+            mCaptureRequest = mCaptureRequestBuilder.build();
+            mCameraCaptureSession.setRepeatingRequest(mCaptureRequest, mCameraCaptureCallback, mCameraHandler);
+        } catch (CameraAccessException e) {
+            Log.e(TAG, "setFocusMode: ", e);
         }
     }
 
@@ -343,17 +420,37 @@ public class CameraControllerImpl extends CameraController {
         if (mCaptureRequestBuilder == null || mCameraCaptureSession == null) {
             return;
         }
+        try {
+            mCaptureRequestBuilder.set(CaptureRequest.CONTROL_AF_REGIONS, new MeteringRectangle[]{rectangle});
+            mCaptureRequest = mCaptureRequestBuilder.build();
+            mCameraCaptureSession.setRepeatingRequest(mCaptureRequest, mCameraCaptureCallback, mCameraHandler);
+        } catch (CameraAccessException e) {
+            Log.e(TAG, "setFocusArea: ", e);
+        }
     }
 
     @Override
-    public Range<Integer> getFocusDistanceRange() {
-        return null;
+    public float getMiniFocusDistance() {
+        try {
+            CameraCharacteristics cameraCharacteristics = mCameraManager.getCameraCharacteristics(mCameraId);
+            return cameraCharacteristics.get(CameraCharacteristics.LENS_INFO_MINIMUM_FOCUS_DISTANCE);
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
+        return -1;
     }
 
     @Override
-    public void setFocusDistance(int distance) {
+    public void setFocusDistance(float distance) {
         if (mCaptureRequestBuilder == null || mCameraCaptureSession == null) {
             return;
+        }
+        try {
+            mCaptureRequestBuilder.set(CaptureRequest.LENS_FOCUS_DISTANCE, distance);
+            mCaptureRequest = mCaptureRequestBuilder.build();
+            mCameraCaptureSession.setRepeatingRequest(mCaptureRequest, mCameraCaptureCallback, mCameraHandler);
+        } catch (CameraAccessException e) {
+            Log.e(TAG, "setFocusDistance: ", e);
         }
     }
 
@@ -370,17 +467,14 @@ public class CameraControllerImpl extends CameraController {
                     Log.e(TAG, "can't find SCALER_STREAM_CONFIGURATION_MAP, cameraId = " + cameraId);
                     continue;
                 }
-                mPreviewSize = getOptimalSize(map.getOutputSizes(SurfaceTexture.class), width, height);
-                if (mPreviewSize.getHeight() < mPreviewSize.getWidth()) {
-                    mTextureViewPreview.setAspectRatio(mPreviewSize.getHeight(), mPreviewSize.getWidth());
-                } else {
-                    mTextureViewPreview.setAspectRatio(mPreviewSize.getWidth(), mPreviewSize.getHeight());
-                }
+
                 mCaptureSize = Collections.max(Arrays.asList(map.getOutputSizes(ImageFormat.JPEG)),
                         (lhs, rhs) -> Long.signum((long) lhs.getWidth() * lhs.getHeight() - (long) rhs.getHeight() * rhs.getWidth()));
+                Log.d(TAG, "capture size = " + mCaptureSize);
                 mImageReader = ImageReader.newInstance(mCaptureSize.getWidth(), mCaptureSize.getHeight(),
                         ImageFormat.JPEG, 2);
                 mImageReader.setOnImageAvailableListener(mOnImageAvailableListener, mCameraHandler);
+                mTextureViewPreview.setAspectRatio(mCaptureSize.getHeight(), mCaptureSize.getWidth());
                 mCameraId = cameraId;
                 mFrontCam = front;
                 break;
@@ -436,7 +530,7 @@ public class CameraControllerImpl extends CameraController {
 
     private void startPreview() {
         SurfaceTexture mSurfaceTexture = mTextureViewPreview.getSurfaceTexture();
-        mSurfaceTexture.setDefaultBufferSize(mPreviewSize.getWidth(), mPreviewSize.getHeight());
+        mSurfaceTexture.setDefaultBufferSize(mCaptureSize.getWidth(), mCaptureSize.getHeight());
         Surface previewSurface = new Surface(mSurfaceTexture);
         try {
             mCaptureRequestBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
@@ -449,7 +543,7 @@ public class CameraControllerImpl extends CameraController {
                         mCallback.onCameraStarted(mFrontCam);
                         mCaptureRequest = mCaptureRequestBuilder.build();
                         mCameraCaptureSession = session;
-                        mCameraCaptureSession.setRepeatingRequest(mCaptureRequest, null, mCameraHandler);
+                        mCameraCaptureSession.setRepeatingRequest(mCaptureRequest, mCameraCaptureCallback, mCameraHandler);
                     } catch (CameraAccessException e) {
                         e.printStackTrace();
                     }
@@ -523,6 +617,18 @@ public class CameraControllerImpl extends CameraController {
         @Override
         public void onSurfaceTextureUpdated(SurfaceTexture surface) {
 
+        }
+    };
+
+    private final CameraCaptureSession.CaptureCallback mCameraCaptureCallback = new CameraCaptureSession.CaptureCallback() {
+        @Override
+        public void onCaptureProgressed(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, @NonNull CaptureResult partialResult) {
+            super.onCaptureProgressed(session, request, partialResult);
+            Float focusDistance = partialResult.get(CaptureResult.LENS_FOCUS_DISTANCE);
+            Integer exposureCompensation = partialResult.get(CaptureResult.CONTROL_AE_EXPOSURE_COMPENSATION);
+            Long exposureTime = partialResult.get(CaptureResult.SENSOR_EXPOSURE_TIME);
+            Float aperture = partialResult.get(CaptureResult.LENS_APERTURE);
+//            Log.d(TAG, "Focus distance: " + focusDistance + ", Exposure compensation: " + exposureCompensation + ", Exposure time: " + exposureTime + ", Aperture: " + aperture);
         }
     };
 }

@@ -3,14 +3,64 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".MainActivity">
+    tools:context=".MainActivity"
+    tools:ignore="HardcodedText">
 
-    <com.york1996.droidcampro.ui.AutoFitTextureView
+    <com.york1996.procam.ui.AutoFitTextureView
         android:id="@+id/texture_view_preview"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_alignParentStart="true"
-        android:layout_alignParentTop="true" />
+        android:layout_centerInParent="true" />
+
+    <LinearLayout
+        android:id="@+id/operate_area"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/area_control"
+        android:gravity="bottom"
+        android:orientation="vertical">
+<!--        <Button-->
+<!--            android:id="@+id/btn_ae"-->
+<!--            android:layout_width="wrap_content"-->
+<!--            android:layout_height="wrap_content"-->
+<!--            android:text="自动测光：开"-->
+<!--            android:textSize="11sp" />-->
+
+        <Button
+            android:id="@+id/btn_ae_lock"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="曝光锁定：关"
+            android:textSize="11sp" />
+
+<!--        <Button-->
+<!--            android:id="@+id/btn_ae_compensation"-->
+<!--            android:layout_width="wrap_content"-->
+<!--            android:layout_height="wrap_content"-->
+<!--            android:text="曝光补偿"-->
+<!--            android:textSize="11sp" />-->
+
+<!--        <Button-->
+<!--            android:id="@+id/btn_awb_mode"-->
+<!--            android:layout_width="wrap_content"-->
+<!--            android:layout_height="wrap_content"-->
+<!--            android:text="白平衡模式"-->
+<!--            android:textSize="11sp" />-->
+
+        <Button
+            android:id="@+id/btn_awb_lock"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="awb: unlock"
+            android:textSize="11sp" />
+
+<!--        <Button-->
+<!--            android:id="@+id/btn_focus_mode"-->
+<!--            android:layout_width="wrap_content"-->
+<!--            android:layout_height="wrap_content"-->
+<!--            android:text="对焦模式"-->
+<!--            android:textSize="11sp" />-->
+    </LinearLayout>
 
     <RelativeLayout
         android:id="@+id/area_control"
@@ -18,12 +68,6 @@
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
         android:orientation="horizontal">
-        <Button
-            android:id="@+id/btn_switch_cam"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_alignParentStart="true"
-            android:text="切换摄像头" />
 
         <Button
             android:id="@+id/btn_take_photo"

@@ -1,4 +1,4 @@
-package com.york1996.droidcampro.ui;
+package com.york1996.procam.ui;
 
 import android.content.Context;
 import android.util.AttributeSet;

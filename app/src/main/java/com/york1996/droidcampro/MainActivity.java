@@ -5,24 +5,29 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
 import android.content.pm.PackageManager;
+import android.content.res.Configuration;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
 import android.widget.Button;
 import android.widget.Toast;
 
-import com.york1996.droidcampro.callback.CameraControlCallback;
-import com.york1996.droidcampro.controller.CameraController;
-import com.york1996.droidcampro.controller.GalleryController;
-import com.york1996.droidcampro.model.CameraParams;
-import com.york1996.droidcampro.ui.AutoFitTextureView;
+import com.york1996.procam.callback.CameraControlCallback;
+import com.york1996.procam.CameraController;
+import com.york1996.procam.controller.GalleryController;
+import com.york1996.procam.model.CameraParams;
+import com.york1996.procam.ui.AutoFitTextureView;
+
 
 public class MainActivity extends AppCompatActivity implements CameraControlCallback {
     private static final String TAG = "MainActivity";
 
     private Button mBtnTakePhoto;
-    private Button mBtnSwitchCam;
     private Button mBtnToGallery;
+    private Button mBtnAELock;
+    private boolean mCurrentLockAE;
+    private Button mBtnAWBLock;
+    private boolean mCurrentLockAWB;
     private AutoFitTextureView mTextureViewPreview;
     private CameraController mCameraController;
     private GalleryController mGalleryController;
@@ -30,25 +35,50 @@ public class MainActivity extends AppCompatActivity implements CameraControlCall
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        Log.d(TAG, "onCreate");
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
         if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.CAMERA}, 1);
+        } else {
+            init();
         }
+    }
 
+    private void init() {
+        mTextureViewPreview = findViewById(R.id.texture_view_preview);
+        mCameraController = new CameraController.Builder()
+                .setContext(this)
+                .setAutoFitTextureView(mTextureViewPreview)
+                .setCameraControlCallback(this)
+                .build();
         mBtnTakePhoto = findViewById(R.id.btn_take_photo);
         mBtnTakePhoto.setOnClickListener(v -> {
             if (mCameraController != null) {
                 mCameraController.takePhoto();
             }
         });
-        mBtnSwitchCam = findViewById(R.id.btn_switch_cam);
-        mBtnSwitchCam.setOnClickListener(v -> {
-            if (mCameraController != null) {
-                mCameraController.switchCamera();
+        mBtnAWBLock = findViewById(R.id.btn_awb_lock);
+        mBtnAWBLock.setOnClickListener(v -> {
+            if (mCameraController == null) {
+                return;
             }
+            mCameraController.setAutoWhiteBalanceLock(!mCurrentLockAWB);
+            mCurrentLockAWB = !mCurrentLockAWB;
+            mBtnAWBLock.setText(mCurrentLockAWB ? "awb: lock" : "awb: unlock");
         });
+        mBtnAELock = findViewById(R.id.btn_ae_lock);
+        mBtnAELock.setOnClickListener(v -> {
+            if (mCameraController == null) {
+                return;
+            }
+            mCameraController.setAutoExposureLock(!mCurrentLockAE);
+            mCurrentLockAE = !mCurrentLockAE;
+            mBtnAELock.setText(mCurrentLockAE ? "曝光锁定：开" : "曝光锁定：关");
+        });
+
+        mGalleryController = new GalleryController(this);
         mBtnToGallery = findViewById(R.id.btn_to_gallery);
         mBtnToGallery.setOnClickListener(v -> {
             if (mGalleryController == null) {
@@ -60,19 +90,12 @@ public class MainActivity extends AppCompatActivity implements CameraControlCall
                 mGalleryController.jumpToSystemGallery();
             }
         });
-        mTextureViewPreview = findViewById(R.id.texture_view_preview);
-        mCameraController = new CameraController.Builder()
-                .setContext(this)
-                .setAutoFitTextureView(mTextureViewPreview)
-                .setCameraControlCallback(this)
-                .build();
-        mGalleryController = new GalleryController(this);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+        if (mCameraController != null) {
             mCameraController.start();
         }
     }
@@ -80,7 +103,9 @@ public class MainActivity extends AppCompatActivity implements CameraControlCall
     @Override
     protected void onPause() {
         super.onPause();
-        mCameraController.stop();
+        if (mCameraController != null) {
+            mCameraController.stop();
+        }
     }
 
     @Override
@@ -89,10 +114,16 @@ public class MainActivity extends AppCompatActivity implements CameraControlCall
         if (requestCode == 1) {
             for (int i = 0; i < permissions.length; i++) {
                 if (grantResults[i] == PackageManager.PERMISSION_GRANTED) {
-                    mCameraController.start();
+                    init();
                 }
             }
         }
+    }
+
+    @Override
+    public void onConfigurationChanged(@NonNull Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        Log.d(TAG, "onConfigurationChanged");
     }
 
     @Override

@@ -1,6 +1,6 @@
-package com.york1996.droidcampro.callback;
+package com.york1996.procam.callback;
 
-import com.york1996.droidcampro.model.CameraParams;
+import com.york1996.procam.model.CameraParams;
 
 public interface CameraControlCallback {
     /**

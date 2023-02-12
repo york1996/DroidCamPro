@@ -1,11 +1,12 @@
-package com.york1996.droidcampro.controller;
+package com.york1996.procam;
 
 import android.content.Context;
 import android.hardware.camera2.params.MeteringRectangle;
 import android.util.Range;
 
-import com.york1996.droidcampro.callback.CameraControlCallback;
-import com.york1996.droidcampro.ui.AutoFitTextureView;
+import com.york1996.procam.callback.CameraControlCallback;
+import com.york1996.procam.controller.CameraControllerImpl;
+import com.york1996.procam.ui.AutoFitTextureView;
 
 public abstract class CameraController {
 
@@ -70,6 +71,19 @@ public abstract class CameraController {
     public abstract boolean supportSwitchCamera();
 
     /**
+     * 获取闪光灯模式
+     *
+     * @return 闪光灯模式
+     */
+    public abstract int[] getFlashMode();
+
+    /**
+     * 设置闪光灯模式
+     * @param mode 模式
+     */
+    public abstract void setFlashMode(int mode);
+
+    /**
      * 开启自动测光
      *
      * @param autoExposure 是否开启
@@ -119,25 +133,32 @@ public abstract class CameraController {
     public abstract void setExposureTime(long value);
 
     /**
-     * 获取白平衡值范围
+     * 获取镜头可调整光圈
      *
-     * @return 范围
+     * @return 光圈
      */
-    public abstract Range<Integer> getWhiteBalanceRegionRange();
+    public abstract float[] getAvailableLensAperture();
 
     /**
-     * 设置白平衡值
+     * 设置光圈
      *
-     * @param value 白平衡值
+     * @param value 光圈
      */
-    public abstract void setWhiteBalanceRegion(int value);
+    public abstract void setLensAperture(float value);
 
     /**
-     * 自动白平衡
+     * 获取白平衡模式
      *
-     * @param auto 是否自动
+     * @return 模式
      */
-    public abstract void setAutoWhitBalance(boolean auto);
+    public abstract int[] getAvailableWhiteBalanceMode();
+
+    /**
+     * 设置白平衡模式
+     *
+     * @param mode 白平衡模式
+     */
+    public abstract void setWhiteBalanceMode(int mode);
 
     /**
      * 自动白平衡锁定
@@ -182,16 +203,16 @@ public abstract class CameraController {
     public abstract void setFocusArea(MeteringRectangle rectangle);
 
     /**
-     * 获取对焦距离范围
+     * 获取最小对焦距离
      *
-     * @return 距离范围
+     * @return 最小距离
      */
-    public abstract Range<Integer> getFocusDistanceRange();
+    public abstract float getMiniFocusDistance();
 
     /**
      * 设置对焦距离
      *
      * @param distance 距离
      */
-    public abstract void setFocusDistance(int distance);
+    public abstract void setFocusDistance(float distance);
 }
