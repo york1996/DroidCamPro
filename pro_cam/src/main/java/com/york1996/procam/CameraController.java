@@ -210,6 +210,13 @@ public abstract class CameraController {
     public abstract float getMiniFocusDistance();
 
     /**
+     * 获取最大对焦距离
+     *
+     * @return 最大距离
+     */
+    public abstract float getMaxFocusDistance();
+
+    /**
      * 设置对焦距离
      *
      * @param distance 距离

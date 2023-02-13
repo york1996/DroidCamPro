@@ -12,6 +12,8 @@
         android:layout_height="match_parent"
         android:layout_centerInParent="true" />
 
+    <include layout="@layout/layout_exposure_control" />
+
     <LinearLayout
         android:id="@+id/operate_area"
         android:layout_width="wrap_content"
@@ -19,12 +21,12 @@
         android:layout_above="@+id/area_control"
         android:gravity="bottom"
         android:orientation="vertical">
-<!--        <Button-->
-<!--            android:id="@+id/btn_ae"-->
-<!--            android:layout_width="wrap_content"-->
-<!--            android:layout_height="wrap_content"-->
-<!--            android:text="自动测光：开"-->
-<!--            android:textSize="11sp" />-->
+        <Button
+            android:id="@+id/btn_ae"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="恢复自动测光"
+            android:textSize="11sp" />
 
         <Button
             android:id="@+id/btn_ae_lock"

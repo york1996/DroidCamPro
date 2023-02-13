@@ -33,13 +33,12 @@ import androidx.core.app.ActivityCompat;
 
 import com.york1996.procam.CameraController;
 import com.york1996.procam.callback.CameraControlCallback;
+import com.york1996.procam.model.CameraParams;
 import com.york1996.procam.ui.AutoFitTextureView;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.List;
 
 public class CameraControllerImpl extends CameraController {
     private static final String TAG = "CameraController";
@@ -58,6 +57,7 @@ public class CameraControllerImpl extends CameraController {
     private final AutoFitTextureView mTextureViewPreview;
     private final CameraControlCallback mCallback;
     private final Handler mMainHandler;
+    private final CameraParams mAutoExposureParams = new CameraParams();
 
     private HandlerThread mCameraThread;
     private Handler mCameraHandler;
@@ -98,7 +98,7 @@ public class CameraControllerImpl extends CameraController {
         // 注册
         if (mTextureViewPreview.isAvailable()) {
             Log.i(TAG, "preview already available");
-            openCameraAndPreview(mTextureWidth, mTextureHeight, mFrontCam);
+            openCameraAndPreview(mFrontCam);
             return;
         }
         mTextureViewPreview.setSurfaceTextureListener(mTextureListener);
@@ -136,7 +136,7 @@ public class CameraControllerImpl extends CameraController {
     @Override
     public void switchCamera() {
         stopCameraAndPreview();
-        openCameraAndPreview(mTextureWidth, mTextureHeight, !mFrontCam);
+        openCameraAndPreview(!mFrontCam);
     }
 
     @Override
@@ -441,6 +441,17 @@ public class CameraControllerImpl extends CameraController {
     }
 
     @Override
+    public float getMaxFocusDistance() {
+        try {
+            CameraCharacteristics cameraCharacteristics = mCameraManager.getCameraCharacteristics(mCameraId);
+            return cameraCharacteristics.get(CameraCharacteristics.LENS_INFO_HYPERFOCAL_DISTANCE);
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
+        return -1;
+    }
+
+    @Override
     public void setFocusDistance(float distance) {
         if (mCaptureRequestBuilder == null || mCameraCaptureSession == null) {
             return;
@@ -454,7 +465,7 @@ public class CameraControllerImpl extends CameraController {
         }
     }
 
-    private void openCameraAndPreview(int width, int height, boolean front) {
+    private void openCameraAndPreview(boolean front) {
         try {
             for (String cameraId : mCameraManager.getCameraIdList()) {
                 CameraCharacteristics characteristics = mCameraManager.getCameraCharacteristics(cameraId);
@@ -508,26 +519,6 @@ public class CameraControllerImpl extends CameraController {
         mCallback.onCameraStopped();
     }
 
-    private Size getOptimalSize(Size[] sizeMap, int width, int height) {
-        List<Size> sizeList = new ArrayList<>();
-        for (Size option : sizeMap) {
-            if (width > height) {
-                if (option.getWidth() > width && option.getHeight() > height) {
-                    sizeList.add(option);
-                }
-            } else {
-                if (option.getWidth() > height && option.getHeight() > width) {
-                    sizeList.add(option);
-                }
-            }
-        }
-        if (sizeList.size() > 0) {
-            return Collections.min(sizeList,
-                    (lhs, rhs) -> Long.signum((long) lhs.getWidth() * lhs.getHeight() - (long) rhs.getWidth() * rhs.getHeight()));
-        }
-        return sizeMap[0];
-    }
-
     private void startPreview() {
         SurfaceTexture mSurfaceTexture = mTextureViewPreview.getSurfaceTexture();
         mSurfaceTexture.setDefaultBufferSize(mCaptureSize.getWidth(), mCaptureSize.getHeight());
@@ -540,10 +531,10 @@ public class CameraControllerImpl extends CameraController {
                 public void onConfigured(CameraCaptureSession session) {
                     Log.d(TAG, "CaptureSession: onConfigured");
                     try {
-                        mCallback.onCameraStarted(mFrontCam);
                         mCaptureRequest = mCaptureRequestBuilder.build();
                         mCameraCaptureSession = session;
                         mCameraCaptureSession.setRepeatingRequest(mCaptureRequest, mCameraCaptureCallback, mCameraHandler);
+                        mCallback.onCameraStarted(mFrontCam);
                     } catch (CameraAccessException e) {
                         e.printStackTrace();
                     }
@@ -598,9 +589,7 @@ public class CameraControllerImpl extends CameraController {
         @Override
         public void onSurfaceTextureAvailable(@NonNull SurfaceTexture surface, int width, int height) {
             Log.d(TAG, "onSurfaceTextureAvailable");
-            mTextureWidth = width;
-            mTextureHeight = height;
-            openCameraAndPreview(width, height, false);
+            openCameraAndPreview(false);
         }
 
         @Override
@@ -621,14 +610,29 @@ public class CameraControllerImpl extends CameraController {
     };
 
     private final CameraCaptureSession.CaptureCallback mCameraCaptureCallback = new CameraCaptureSession.CaptureCallback() {
+
         @Override
-        public void onCaptureProgressed(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, @NonNull CaptureResult partialResult) {
-            super.onCaptureProgressed(session, request, partialResult);
-            Float focusDistance = partialResult.get(CaptureResult.LENS_FOCUS_DISTANCE);
-            Integer exposureCompensation = partialResult.get(CaptureResult.CONTROL_AE_EXPOSURE_COMPENSATION);
-            Long exposureTime = partialResult.get(CaptureResult.SENSOR_EXPOSURE_TIME);
-            Float aperture = partialResult.get(CaptureResult.LENS_APERTURE);
-//            Log.d(TAG, "Focus distance: " + focusDistance + ", Exposure compensation: " + exposureCompensation + ", Exposure time: " + exposureTime + ", Aperture: " + aperture);
+        public void onCaptureCompleted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, @NonNull TotalCaptureResult result) {
+            super.onCaptureCompleted(session, request, result);
+            Integer aeCompensation = result.get(CaptureResult.CONTROL_AE_EXPOSURE_COMPENSATION);
+            Long aeExposureTime = result.get(CaptureResult.SENSOR_EXPOSURE_TIME);
+            Integer aeISO = result.get(CaptureResult.SENSOR_SENSITIVITY);
+            Float aeLensAperture = result.get(CaptureResult.LENS_APERTURE);
+            if (aeCompensation == null || aeExposureTime == null || aeISO == null || aeLensAperture == null) {
+                return;
+            }
+            if (mAutoExposureParams.getAutoExposureCompensation() == aeCompensation
+                    && mAutoExposureParams.getExposureTime() == aeExposureTime
+                    && mAutoExposureParams.getISO() == aeISO
+                    && mAutoExposureParams.getLensAperture() == aeLensAperture) {
+                return;
+            }
+            mAutoExposureParams.setAutoExposureCompensation(aeCompensation);
+            mAutoExposureParams.setExposureTime(aeExposureTime);
+            mAutoExposureParams.setISO(aeISO);
+            mAutoExposureParams.setLensAperture(aeLensAperture);
+            Log.d(TAG, "update auto param = " + mAutoExposureParams);
+            mCallback.onCameraParamsChanged(mAutoExposureParams);
         }
     };
 }

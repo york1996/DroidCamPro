@@ -16,18 +16,18 @@ public interface CameraControlCallback {
     void onCameraStopped();
 
     /**
-     * 相机参数改变
-     *
-     * @param params 相机参数
-     */
-    void onCameraParamsChanged(CameraParams params);
-
-    /**
      * 捕获照片数据回调
      *
      * @param photoBytes 照片数据
      */
     void onCameraCapture(byte[] photoBytes);
+
+    /**
+     * 相关参数改变
+     *
+     * @param params 参数
+     */
+    void onCameraParamsChanged(CameraParams params);
 
     /**
      * 错误异常
